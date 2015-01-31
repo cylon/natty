@@ -92,35 +92,48 @@ date
   ;
   
 date_time_alternative
-      
-  // in 2 to 3 months, 4 and 7 months
-  : (((IN | FOR | NEXT) WHITE_SPACE)? spelled_or_int_optional_prefix conjunction)=>
-      ((IN | FOR | NEXT) WHITE_SPACE)? one=spelled_or_int_optional_prefix conjunction two=spelled_or_int_optional_prefix WHITE_SPACE relative_date_span
-        -> ^(DATE_TIME_ALTERNATIVE
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] $one relative_date_span)))
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] $two relative_date_span))))
-      
+  // for 3 days, for 7 months, for twenty seconds
+  : (range_direction WHITE_SPACE spelled_or_int_optional_prefix)=>
+    range_direction WHITE_SPACE one=spelled_or_int_optional_prefix (conjunction two=spelled_or_int_optional_prefix)? WHITE_SPACE range_span
+      // in 5 months
+      -> {$range_direction.text.equalsIgnoreCase("IN")}?
+         ^(DATE_TIME_ALTERNATIVE
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
+          )
+
+      // for 3 or 4 days
+      -> {!$range_direction.text.equalsIgnoreCase("IN") && $two.text != null}?
+         ^(DATE_TIME_ALTERNATIVE
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] range_span)))
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $two range_span)))
+          )
+
+      // for 2 or 4 weeks
+      -> {$two.text != null}?
+         ^(DATE_TIME_ALTERNATIVE
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one SPAN["day"])))
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $two range_span)))
+          )
+
+      -> ^(DATE_TIME_ALTERNATIVE
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] SPAN["day"])))
+           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
+          )
+
   // today or the day after that, feb 16th or 2 days after that, january fourth or the friday after
   | (date conjunction global_date_prefix)=>
       date conjunction global_date_prefix (WHITE_SPACE THAT)? (date_time_separator explicit_time)?
         -> ^(DATE_TIME_ALTERNATIVE ^(DATE_TIME date explicit_time?) ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK global_date_prefix date) explicit_time?)))
-        
-  // "next wed or thurs" , "next wed, thurs, or fri"
-  | (alternative_day_of_week_list)=> alternative_day_of_week_list
-      -> ^(DATE_TIME_ALTERNATIVE alternative_day_of_week_list)
-      
+
   // feb 16, 17, or 18
   | (alternative_day_of_month_list)=> alternative_day_of_month_list
       -> ^(DATE_TIME_ALTERNATIVE alternative_day_of_month_list)
-        
-  // this wed. or next
-  | ((THIS WHITE_SPACE)? day_of_week conjunction alternative_direction)=>
-    (THIS WHITE_SPACE)? day_of_week conjunction alternative_direction (date_time_separator explicit_time)?
-      -> ^(DATE_TIME_ALTERNATIVE 
-            ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] day_of_week)) explicit_time?) 
-            ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK alternative_direction day_of_week)) explicit_time?)
-          )
-        
+
+  // "next wed or thurs" , "next wed, thurs, or fri", "this wed or next"
+  | (alternative_day_of_week_list)=> alternative_day_of_week_list
+      -> ^(DATE_TIME_ALTERNATIVE alternative_day_of_week_list)
+
   // 1/2 or 1/4 or 1/6 at 6pm
   // Aug 16 at 10am or Sept 28th at 11am
   | (date_time conjunction date_time)=>
@@ -133,37 +146,21 @@ date_time_alternative
         -> ^(DATE_TIME_ALTERNATIVE
              ^(DATE_TIME ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_year) $first))
              ^(DATE_TIME ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_year) $second)))
-             
-  // for 3 days, for 7 months, for twenty seconds
-  | ((FOR | NEXT) WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE)=>
-    (FOR | NEXT) WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE
-      (relative_date_span -> 
-        ^(DATE_TIME_ALTERNATIVE
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] SPAN["day"])))
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] spelled_or_int_optional_prefix relative_date_span))))
-      | relative_time_span ->
-        ^(DATE_TIME_ALTERNATIVE
-          ^(DATE_TIME ^(RELATIVE_TIME ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] SPAN["day"])))
-          ^(DATE_TIME ^(RELATIVE_TIME ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] spelled_or_int_optional_prefix relative_time_span))))
-      )
-      
-  // last 3 days, last 7 months, past twenty seconds
-  | ((LAST | PAST) WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE)=>
-    (LAST | PAST) WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE
-      (relative_date_span -> 
-        ^(DATE_TIME_ALTERNATIVE
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] INT["0"] SPAN["day"])))
-          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] spelled_or_int_optional_prefix relative_date_span))))
-      | relative_time_span ->
-        ^(DATE_TIME_ALTERNATIVE
-          ^(DATE_TIME ^(RELATIVE_TIME ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] INT["0"] SPAN["day"])))
-          ^(DATE_TIME ^(RELATIVE_TIME ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] spelled_or_int_optional_prefix relative_time_span))))
-      )
-  
+
   // single date_time
   | date_time -> ^(DATE_TIME_ALTERNATIVE date_time)
   ;
-  
+
+range_span
+  : relative_date_span
+  | relative_time_span
+  ;
+
+range_direction
+  : (IN | FOR | NEXT)  -> DIRECTION[">"] SEEK_BY["by_day"]
+  | (LAST | PAST) -> DIRECTION["<"] SEEK_BY["by_day"]
+  ;
+
 conjunction
   : COMMA? WHITE_SPACE (AND | OR | TO | THROUGH | DASH) WHITE_SPACE
   ;
@@ -194,10 +191,19 @@ alternative_day_of_month_list
   ;
   
 alternative_day_of_week_list
-  : alternative_direction WHITE_SPACE day_of_week (day_of_week_list_separator day_of_week)+ (date_time_separator explicit_time)?
-      -> ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK alternative_direction day_of_week)) explicit_time?)+
+  : first_direction=alternative_direction WHITE_SPACE day_of_week
+
+    // this wed or thursday or friday
+    ((day_of_week_list_separator day_of_week)+ (date_time_separator explicit_time)?
+      -> ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK $first_direction day_of_week)) explicit_time?)+
+
+    // this wed. or next
+    | conjunction second_direction=alternative_direction (date_time_separator explicit_time)?
+      ->  ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] day_of_week)) explicit_time?)
+          ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK $second_direction day_of_week)) explicit_time?)
+    )
   ;
-  
+
 day_of_week_list_separator
   : COMMA (WHITE_SPACE | conjunction) | conjunction
   ;
@@ -254,15 +260,21 @@ prefix_direction
 
 // relaxed date with a spelled-out or abbreviated month
 relaxed_date
-  : (
-      // The 31st of April in the year 2008
-      // RFC822 style: Fri, 21 Nov 1997
-      relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month
-        WHITE_SPACE (OF WHITE_SPACE)? relaxed_month (relaxed_year_prefix relaxed_year)?
+  : (relaxed_date_month_first)=> relaxed_date_month_first
+  | relaxed_date_month_last
+  ;
 
-      // Jan 21, 1997   Sun, Nov 21
-      | relaxed_day_of_week? relaxed_month COMMA? WHITE_SPACE relaxed_day_of_month (relaxed_year_prefix relaxed_year)?
-    ) -> ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month relaxed_day_of_week? relaxed_year?)
+relaxed_date_month_first
+  : (relaxed_day_of_week? relaxed_month)=>
+    relaxed_day_of_week? relaxed_month COMMA? WHITE_SPACE relaxed_day_of_month (relaxed_year_prefix relaxed_year)?
+      -> ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month relaxed_day_of_week? relaxed_year?)
+  ;
+
+relaxed_date_month_last
+  : (relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month WHITE_SPACE (OF WHITE_SPACE)? relaxed_month)=>
+    relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month
+      WHITE_SPACE (OF WHITE_SPACE)? relaxed_month (relaxed_year_prefix relaxed_year)?
+        -> ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month relaxed_day_of_week? relaxed_year?)
   ;
 
 relaxed_day_of_week
@@ -291,7 +303,7 @@ relaxed_month
 relaxed_day_of_month
   : spelled_or_int_01_to_31_optional_prefix
       -> ^(DAY_OF_MONTH spelled_or_int_01_to_31_optional_prefix)
-      
+
   | spelled_first_to_thirty_first
       -> ^(DAY_OF_MONTH spelled_first_to_thirty_first)
   ;
@@ -320,8 +332,12 @@ relaxed_year_prefix
 // ********** formal date rules **********
 
 formal_date
+  : (relaxed_month WHITE_SPACE relaxed_year)=>
+    relaxed_month WHITE_SPACE relaxed_year
+      -> ^(EXPLICIT_DATE relaxed_month ^(DAY_OF_MONTH INT["1"]) relaxed_year?)
+
   // year first: 1979-02-28, 1980/01/02, etc.  full 4 digit year required to match
-  : relaxed_day_of_week? formal_year_four_digits formal_date_separator (formal_month_of_year | relaxed_month) formal_date_separator formal_day_of_month
+  | relaxed_day_of_week? formal_year_four_digits formal_date_separator (formal_month_of_year | relaxed_month) formal_date_separator formal_day_of_month
       -> ^(EXPLICIT_DATE formal_month_of_year? relaxed_month? formal_day_of_month relaxed_day_of_week? formal_year_four_digits)
       
   // year last: 1/02/1980, 2/28/79.  2 or 4 digit year is acceptable 
@@ -331,9 +347,6 @@ formal_date
   // 15-Apr-2014
   | formal_day_of_month formal_date_separator relaxed_month (formal_date_separator formal_year_four_digits)?
       -> ^(EXPLICIT_DATE relaxed_month formal_day_of_month formal_year_four_digits?)
-
-  | relaxed_month WHITE_SPACE relaxed_year
-      -> ^(EXPLICIT_DATE relaxed_month ^(DAY_OF_MONTH INT["1"]) relaxed_year?)
   ;
   
 formal_month_of_year
@@ -472,7 +485,7 @@ explicit_relative_date
       -> ^(RELATIVE_DATE 
           ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] relaxed_month)
           explicit_day_of_month_part)
-          
+
   // the first day of 2009
   | explicit_day_of_year_part WHITE_SPACE relaxed_year
       -> ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_year) explicit_day_of_year_part)
@@ -480,16 +493,21 @@ explicit_relative_date
   
 explicit_day_of_month_part
   // first of, 10th of, 31st of,
-  : (THE WHITE_SPACE)? relaxed_day_of_month (WHITE_SPACE (IN | OF))?
+  : (THE WHITE_SPACE)? relaxed_day_of_month day_of_month_suffix?
       -> ^(EXPLICIT_SEEK relaxed_day_of_month)
       
   // the last thursday
-  | (THE WHITE_SPACE)? relative_occurrence_index WHITE_SPACE day_of_week (WHITE_SPACE (IN | OF))?
+  | (THE WHITE_SPACE)? relative_occurrence_index WHITE_SPACE day_of_week day_of_month_suffix
       -> ^(EXPLICIT_SEEK relative_occurrence_index day_of_week)
       
   // in the start of, at the beginning of, the end of, last day of, first day of
-  | (((IN | AT) WHITE_SPACE)? THE WHITE_SPACE)? explicit_day_of_month_bound (WHITE_SPACE (OF | IN))?
+  | (((IN | AT) WHITE_SPACE)? THE WHITE_SPACE)? explicit_day_of_month_bound day_of_month_suffix?
       -> explicit_day_of_month_bound
+  ;
+
+day_of_month_suffix
+  : (WHITE_SPACE (IN | OF))=>
+      WHITE_SPACE (IN | OF)
   ;
 
 explicit_day_of_week_part
@@ -664,8 +682,9 @@ holiday
   | relative_date_prefix WHITE_SPACE holiday_name
     -> ^(SEEK relative_date_prefix holiday_name)
     
-  | holiday_name relaxed_year_prefix relaxed_year
-    -> ^(EXPLICIT_SEEK holiday_name relaxed_year)
+  | (holiday_name relaxed_year_prefix relaxed_year)=>
+      holiday_name relaxed_year_prefix relaxed_year
+        -> ^(EXPLICIT_SEEK holiday_name relaxed_year)
     
   | holiday_name
     -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["1"] holiday_name)
@@ -678,8 +697,9 @@ holiday_name
   | BLACK WHITE_SPACE FRIDAY
     -> HOLIDAY["BLACK_FRIDAY"]
     
-  | CHRISTMAS WHITE_SPACE EVENING 
-    -> HOLIDAY["CHRISTMAS_EVE"]
+  | (CHRISTMAS WHITE_SPACE EVENING)=>
+    CHRISTMAS WHITE_SPACE EVENING
+      -> HOLIDAY["CHRISTMAS_EVE"]
     
   | CHRISTMAS (WHITE_SPACE DAY)? 
     -> HOLIDAY["CHRISTMAS"]
@@ -729,8 +749,9 @@ holiday_name
   | MOTHER WHITE_SPACE DAY
     -> HOLIDAY["MOTHERS_DAY"]
     
-  | NEW WHITE_SPACE YEAR WHITE_SPACE EVENING
-    -> HOLIDAY["NEW_YEARS_EVE"]
+  | (NEW WHITE_SPACE YEAR WHITE_SPACE EVENING)=>
+      NEW WHITE_SPACE YEAR WHITE_SPACE EVENING
+        -> HOLIDAY["NEW_YEARS_EVE"]
     
   | NEW WHITE_SPACE YEAR (WHITE_SPACE DAY)?
     -> HOLIDAY["NEW_YEARS_DAY"]
@@ -767,8 +788,9 @@ season
   | relative_date_prefix WHITE_SPACE season_name 
     -> ^(SEEK relative_date_prefix season_name)
     
-  | season_name relaxed_year_prefix relaxed_year
-    -> ^(EXPLICIT_SEEK season_name relaxed_year)
+  | (season_name relaxed_year_prefix)=>
+      season_name relaxed_year_prefix relaxed_year
+        -> ^(EXPLICIT_SEEK season_name relaxed_year)
     
   | season_name
     -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["1"] season_name)
@@ -791,11 +813,7 @@ relative_time
   // 10 hours ago, 20 minutes before noon
   : spelled_or_int_optional_prefix WHITE_SPACE relative_time_target WHITE_SPACE relative_time_suffix 
     -> ^(RELATIVE_TIME ^(SEEK relative_time_suffix spelled_or_int_optional_prefix relative_time_target))
-    
-  // in 3 minutes
-  | IN WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE relative_time_target
-    -> ^(RELATIVE_TIME ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] spelled_or_int_optional_prefix relative_time_target))
-    
+
   // next hour, last minute
   | prefix WHITE_SPACE relative_time_target
     -> ^(RELATIVE_TIME ^(SEEK prefix relative_time_target))
