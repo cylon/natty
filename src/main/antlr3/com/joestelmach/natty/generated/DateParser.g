@@ -269,19 +269,17 @@ prefix_direction
 
 // relaxed date with a spelled-out or abbreviated month
 relaxed_date
-  : (relaxed_date_month_first)=> relaxed_date_month_first
+  : relaxed_date_month_first
   | relaxed_date_month_last
   ;
 
 relaxed_date_month_first
-  : (relaxed_day_of_week? relaxed_month)=>
-    relaxed_day_of_week? relaxed_month COMMA? WHITE_SPACE relaxed_day_of_month (relaxed_year_prefix relaxed_year)?
+  : relaxed_day_of_week? relaxed_month COMMA? WHITE_SPACE relaxed_day_of_month (relaxed_year_prefix relaxed_year)?
       -> ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month relaxed_day_of_week? relaxed_year?)
   ;
 
 relaxed_date_month_last
-  : (relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month WHITE_SPACE (OF WHITE_SPACE)? relaxed_month)=>
-    relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month
+  : relaxed_day_of_week? relaxed_day_of_month_prefix? relaxed_day_of_month
       WHITE_SPACE (OF WHITE_SPACE)? relaxed_month (relaxed_year_prefix relaxed_year)?
         -> ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month relaxed_day_of_week? relaxed_year?)
   ;

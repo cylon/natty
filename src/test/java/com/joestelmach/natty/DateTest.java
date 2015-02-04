@@ -258,10 +258,9 @@ public class DateTest extends AbstractTest {
     validateDate(dates.get(2), 5, 2, 2011);
 
     dates = parseCollection("2 to 4 months from now");
-    Assert.assertEquals(3, dates.size());
-    validateDate(dates.get(0), 1, 2, 2011);
-    validateDate(dates.get(1), 3, 2, 2011);
-    validateDate(dates.get(2), 5, 2, 2011);
+    Assert.assertEquals(2, dates.size());
+    validateDate(dates.get(0), 3, 2, 2011);
+    validateDate(dates.get(1), 5, 2, 2011);
 
     dates = parseCollection("last 2 to 4 months");
     Assert.assertEquals(3, dates.size());
