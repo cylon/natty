@@ -93,33 +93,8 @@ date
   
 date_time_alternative
   // for 3 days, for 7 months, for twenty seconds
-  : (range_direction WHITE_SPACE spelled_or_int_optional_prefix)=>
-    range_direction WHITE_SPACE one=spelled_or_int_optional_prefix (conjunction two=spelled_or_int_optional_prefix)? WHITE_SPACE range_span
-      // in 5 months
-      -> {$range_direction.text.equalsIgnoreCase("IN")}?
-         ^(DATE_TIME_ALTERNATIVE
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
-          )
-
-      // for 3 or 4 days
-      -> {!$range_direction.text.equalsIgnoreCase("IN") && $two.text != null}?
-         ^(DATE_TIME_ALTERNATIVE
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] range_span)))
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $two range_span)))
-          )
-
-      // for 2 or 4 weeks
-      -> {$two.text != null}?
-         ^(DATE_TIME_ALTERNATIVE
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one SPAN["day"])))
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $two range_span)))
-          )
-
-      -> ^(DATE_TIME_ALTERNATIVE
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] SPAN["day"])))
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
-          )
+  : (date_time_alternative_range)=> date_time_alternative_range
+    -> ^(DATE_TIME_ALTERNATIVE date_time_alternative_range)
 
   // today or the day after that, feb 16th or 2 days after that, january fourth or the friday after
   | (date conjunction global_date_prefix)=>
@@ -151,20 +126,54 @@ date_time_alternative
   | date_time -> ^(DATE_TIME_ALTERNATIVE date_time)
   ;
 
-range_span
-  : relative_date_span
-  | relative_time_span
+date_time_alternative_range
+  : (
+    // in two days, in 3 or 4 days
+    range_direction one=spelled_or_int_optional_prefix
+      (conjunction two=spelled_or_int_optional_prefix)? WHITE_SPACE range_span
+
+    // two to 7 days, 4 to 5 days ago
+    | one=spelled_or_int_optional_prefix conjunction two=spelled_or_int_optional_prefix WHITE_SPACE
+      range_span (WHITE_SPACE relative_date_suffix)?
+  )
+    -> {$range_direction.text != null && $range_direction.inclusive && $two.text != null}?
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] range_span)))
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $two range_span)))
+
+    -> {$range_direction.text != null && $range_direction.inclusive}?
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction INT["0"] range_span)))
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK range_direction $one range_span)))
+
+    -> {$relative_date_suffix.text != null && $two.text != null}?
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK relative_date_suffix $one range_span)))
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK relative_date_suffix $two range_span)))
+
+    -> {$relative_date_suffix.text != null}?
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK relative_date_suffix $one range_span)))
+
+    -> {$two.text != null}?
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] $one range_span)))
+         ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] $two range_span)))
+
+    -> ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] $one range_span)))
   ;
 
-range_direction
-  : (IN | FOR | NEXT)  -> DIRECTION[">"] SEEK_BY["by_day"]
-  | (LAST | PAST) -> DIRECTION["<"] SEEK_BY["by_day"]
+range_direction returns [Boolean inclusive]
+  : (FOR | NEXT) WHITE_SPACE  {$inclusive=true;}  -> DIRECTION[">"] SEEK_BY["by_day"]
+  | (LAST | PAST) WHITE_SPACE {$inclusive=true;}  -> DIRECTION["<"] SEEK_BY["by_day"]
+  | IN WHITE_SPACE            {$inclusive=false;} -> DIRECTION[">"] SEEK_BY["by_day"]
   ;
 
 conjunction
   : COMMA? WHITE_SPACE (AND | OR | TO | THROUGH | DASH) WHITE_SPACE
   ;
-  
+
+range_span
+  : relative_date_span
+  | relative_time_span
+  ;
+
 alternative_day_of_month_list
   // mon may 15 or tues may 16
   : ((relaxed_day_of_week? relaxed_month WHITE_SPACE relaxed_day_of_month (conjunction relaxed_day_of_month)+) (date_time_separator explicit_time)?)

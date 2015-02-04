@@ -234,7 +234,57 @@ public class DateTest extends AbstractTest {
     Assert.assertEquals(2, dates.size());
     validateDate(dates.get(0), 1, 2, 2011);
     validateDate(dates.get(1), 1, 2, 2036);
-    
+
+    dates = parseCollection("2 and 4 months");
+    Assert.assertEquals(2, dates.size());
+    validateDate(dates.get(0), 3, 2, 2011);
+    validateDate(dates.get(1), 5, 2, 2011);
+
+    dates = parseCollection("in 2 to 4 months");
+    Assert.assertEquals(2, dates.size());
+    validateDate(dates.get(0), 3, 2, 2011);
+    validateDate(dates.get(1), 5, 2, 2011);
+
+    dates = parseCollection("for 2 to 4 months");
+    Assert.assertEquals(3, dates.size());
+    validateDate(dates.get(0), 1, 2, 2011);
+    validateDate(dates.get(1), 3, 2, 2011);
+    validateDate(dates.get(2), 5, 2, 2011);
+
+    dates = parseCollection("next 2 to 4 months");
+    Assert.assertEquals(3, dates.size());
+    validateDate(dates.get(0), 1, 2, 2011);
+    validateDate(dates.get(1), 3, 2, 2011);
+    validateDate(dates.get(2), 5, 2, 2011);
+
+    dates = parseCollection("2 to 4 months from now");
+    Assert.assertEquals(3, dates.size());
+    validateDate(dates.get(0), 1, 2, 2011);
+    validateDate(dates.get(1), 3, 2, 2011);
+    validateDate(dates.get(2), 5, 2, 2011);
+
+    dates = parseCollection("last 2 to 4 months");
+    Assert.assertEquals(3, dates.size());
+    validateDate(dates.get(0), 1, 2, 2011);
+    validateDate(dates.get(1), 11, 2, 2010);
+    validateDate(dates.get(2), 9, 2, 2010);
+
+    dates = parseCollection("past 2 to 4 months");
+    Assert.assertEquals(3, dates.size());
+    validateDate(dates.get(0), 1, 2, 2011);
+    validateDate(dates.get(1), 11, 2, 2010);
+    validateDate(dates.get(2), 9, 2, 2010);
+
+    dates = parseCollection("2 to 4 months ago");
+    Assert.assertEquals(2, dates.size());
+    validateDate(dates.get(0), 11, 2, 2010);
+    validateDate(dates.get(1), 9, 2, 2010);
+
+    dates = parseCollection("1 to 2 days");
+    Assert.assertEquals(2, dates.size());
+    validateDate(dates.get(0), 1, 3, 2011);
+    validateDate(dates.get(1), 1, 4, 2011);
+
     dates = parseCollection("I want to go shopping in Knoxville, TN in the next five to six months.");
     Assert.assertEquals(3, dates.size());
     validateDate(dates.get(0), 1, 2, 2011);
@@ -290,7 +340,7 @@ public class DateTest extends AbstractTest {
     logger.setLevel(Level.FINEST);
     logger.addHandler(handler);
 
-    String value = "next five to six months";
+    String value = "2 to 4 months ago";
 
     Parser parser = new Parser();
     List<DateGroup> groups = parser.parse(value);
