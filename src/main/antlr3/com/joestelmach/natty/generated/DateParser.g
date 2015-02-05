@@ -828,16 +828,23 @@ relative_time
 
 // a time with an hour, optional minutes, and optional meridian indicator
 explicit_time
-  : hours COLON? minutes (COLON? seconds)? (WHITE_SPACE? (meridian_indicator | (MILITARY_HOUR_SUFFIX | HOUR)))? (WHITE_SPACE? time_zone)?
-      -> ^(EXPLICIT_TIME hours minutes seconds? meridian_indicator? time_zone?)
-      
-  | hours (WHITE_SPACE? meridian_indicator)? (WHITE_SPACE? time_zone)?
-      -> ^(EXPLICIT_TIME hours ^(MINUTES_OF_HOUR INT["0"]) meridian_indicator? time_zone?)
-      
-  | (THIS WHITE_SPACE)? named_time (WHITE_SPACE time_zone)?
+  : explicit_time_hours_minutes (WHITE_SPACE time_zone)?
+    -> ^(EXPLICIT_TIME explicit_time_hours_minutes time_zone?)
+
+  | named_time (WHITE_SPACE time_zone)?
     -> ^(EXPLICIT_TIME named_time time_zone?)
   ;
- 
+
+explicit_time_hours_minutes returns [String hours, String minutes, String ampm]
+  : hours COLON? minutes (COLON? seconds)? (WHITE_SPACE? (meridian_indicator | (MILITARY_HOUR_SUFFIX | HOUR)))? (WHITE_SPACE? time_zone)?
+      {$hours=$hours.text; $minutes=$minutes.text; $ampm=$meridian_indicator.text;}
+      -> hours minutes seconds? meridian_indicator? time_zone?
+
+  | hours (WHITE_SPACE? meridian_indicator)? (WHITE_SPACE? time_zone)?
+      {$hours=$hours.text; $ampm=$meridian_indicator.text;}
+      -> hours ^(MINUTES_OF_HOUR INT["0"]) meridian_indicator? time_zone?
+  ;
+
 // hour of the day
 hours
   : int_00_to_23_optional_prefix -> ^(HOURS_OF_DAY int_00_to_23_optional_prefix)
@@ -872,26 +879,31 @@ friendly_meridian_indicator
   ;
 
 named_time
-  : (IN WHITE_SPACE THE WHITE_SPACE)? NOON    -> ^(HOURS_OF_DAY INT["12"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
-  | (IN WHITE_SPACE THE WHITE_SPACE)? MORNING -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["am"]
-  | (IN WHITE_SPACE THE WHITE_SPACE)? NIGHT   -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+  : (((IN WHITE_SPACE THE) | AT | THIS) WHITE_SPACE)? named_hour ((WHITE_SPACE AT)? WHITE_SPACE hm=explicit_time_hours_minutes)?
 
-  // tonight at 7, this evening at 6:30
-  | ((TONIGHT | EVENING) WHITE_SPACE AT WHITE_SPACE int_01_to_31_optional_prefix)=>
-      (TONIGHT | EVENING) WHITE_SPACE AT WHITE_SPACE hour=int_01_to_31_optional_prefix (COLON? minutes)?
+    // If the named time is at night, but the hour given is before 5, we'll assume tomorrow morning
+    -> {$hm.text != null && $named_hour.ampm != null && $named_hour.ampm.equals("pm") && Integer.parseInt($hm.hours) < 5}?
+         ^(HOURS_OF_DAY INT[Integer.toString(Integer.parseInt($hm.hours) + 24)])
+         ^(MINUTES_OF_HOUR INT[$hm.minutes])
+         ^(SECONDS_OF_MINUTE INT["0"]) AM_PM[$named_hour.ampm]
 
-        // If the hour given is before 5, we'll assume tomorrow morning
-        -> {Integer.parseInt($hour.text) < 5}?
-             ^(HOURS_OF_DAY INT[Integer.toString(Integer.parseInt($hour.text) + 24)])
-             minutes? ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["am"]
+    -> {$hm.hours != null}?
+         ^(HOURS_OF_DAY INT[$hm.hours])
+         ^(MINUTES_OF_HOUR INT[$hm.minutes])
+         ^(SECONDS_OF_MINUTE INT["0"]) AM_PM[$named_hour.ampm]
 
-        -> ^(HOURS_OF_DAY $hour) minutes? ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
-
-  | TONIGHT                                   -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
-  | (AT WHITE_SPACE)? MIDNIGHT                -> ^(HOURS_OF_DAY INT["12"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["am"]
-  | (IN WHITE_SPACE THE WHITE_SPACE)? EVENING -> ^(HOURS_OF_DAY INT["7"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+    -> named_hour
   ;
-  
+
+named_hour returns [String ampm]
+  : MORNING  {$ampm="am";} -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["am"]
+  | MIDNIGHT {$ampm="am";} -> ^(HOURS_OF_DAY INT["12"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["am"]
+  | NOON     {$ampm="pm";} -> ^(HOURS_OF_DAY INT["12"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+  | NIGHT    {$ampm="pm";} -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+  | TONIGHT  {$ampm="pm";} -> ^(HOURS_OF_DAY INT["8"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+  | EVENING  {$ampm="pm";} -> ^(HOURS_OF_DAY INT["7"]) ^(MINUTES_OF_HOUR INT["0"]) ^(SECONDS_OF_MINUTE INT["0"]) AM_PM["pm"]
+  ;
+
 time_zone
   : time_zone_plus_offset
   | time_zone_abbreviation

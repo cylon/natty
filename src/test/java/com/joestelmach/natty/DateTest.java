@@ -339,7 +339,7 @@ public class DateTest extends AbstractTest {
     logger.setLevel(Level.FINEST);
     logger.addHandler(handler);
 
-    String value = "2 to 4 months ago";
+    String value = "have my son play at muse music in provo UT at the 3 band cause they always have fog on the third band at 7:30";
 
     Parser parser = new Parser();
     List<DateGroup> groups = parser.parse(value);
