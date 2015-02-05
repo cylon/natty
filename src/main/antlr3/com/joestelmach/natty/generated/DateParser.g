@@ -879,7 +879,7 @@ friendly_meridian_indicator
   ;
 
 named_time
-  : (((IN WHITE_SPACE THE) | AT | THIS) WHITE_SPACE)? named_hour ((WHITE_SPACE AT)? WHITE_SPACE hm=explicit_time_hours_minutes)?
+  : named_time_prefix named_hour ((WHITE_SPACE AT)? WHITE_SPACE hm=explicit_time_hours_minutes)?
 
     // If the named time is at night, but the hour given is before 5, we'll assume tomorrow morning
     -> {$hm.text != null && $named_hour.ampm != null && $named_hour.ampm.equals("pm") && Integer.parseInt($hm.hours) < 5}?
@@ -893,6 +893,10 @@ named_time
          ^(SECONDS_OF_MINUTE INT["0"]) AM_PM[$named_hour.ampm]
 
     -> named_hour
+  ;
+
+named_time_prefix
+  : (((IN WHITE_SPACE THE) | AT | THIS) WHITE_SPACE)?
   ;
 
 named_hour returns [String ampm]
