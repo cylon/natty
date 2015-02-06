@@ -828,7 +828,7 @@ relative_time
 
 // a time with an hour, optional minutes, and optional meridian indicator
 explicit_time
-  : explicit_time_hours_minutes (WHITE_SPACE time_zone)?
+  : explicit_time_hours_minutes (WHITE_SPACE? time_zone)?
     -> ^(EXPLICIT_TIME explicit_time_hours_minutes time_zone?)
 
   | named_time (WHITE_SPACE time_zone)?
@@ -836,13 +836,13 @@ explicit_time
   ;
 
 explicit_time_hours_minutes returns [String hours, String minutes, String ampm]
-  : hours COLON? minutes (COLON? seconds)? (WHITE_SPACE? (meridian_indicator | (MILITARY_HOUR_SUFFIX | HOUR)))? (WHITE_SPACE? time_zone)?
+  : hours COLON? minutes (COLON? seconds)? (WHITE_SPACE? (meridian_indicator | (MILITARY_HOUR_SUFFIX | HOUR)))?
       {$hours=$hours.text; $minutes=$minutes.text; $ampm=$meridian_indicator.text;}
-      -> hours minutes seconds? meridian_indicator? time_zone?
+      -> hours minutes seconds? meridian_indicator?
 
-  | hours (WHITE_SPACE? meridian_indicator)? (WHITE_SPACE? time_zone)?
+  | hours (WHITE_SPACE? meridian_indicator)?
       {$hours=$hours.text; $ampm=$meridian_indicator.text;}
-      -> hours ^(MINUTES_OF_HOUR INT["0"]) meridian_indicator? time_zone?
+      -> hours ^(MINUTES_OF_HOUR INT["0"]) meridian_indicator?
   ;
 
 // hour of the day
@@ -916,7 +916,6 @@ time_zone
 time_zone_plus_offset
   : UTC? time_zone_offset -> ZONE_OFFSET[$time_zone_offset.text]
   ;
-
 
 time_zone_offset
   : (PLUS | DASH) hours (COLON? minutes)? 
