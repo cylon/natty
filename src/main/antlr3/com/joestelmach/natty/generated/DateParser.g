@@ -853,10 +853,11 @@ simple_meridian_indicator
   ;
 
 friendly_meridian_indicator
-  : (IN WHITE_SPACE THE WHITE_SPACE)? MORNING -> AM_PM["am"]
-  | (IN WHITE_SPACE THE WHITE_SPACE)? NOON -> AM_PM["pm"]
-  | (IN WHITE_SPACE THE WHITE_SPACE)? EVENING -> AM_PM["pm"]
-  | (AT WHITE_SPACE)? NIGHT -> AM_PM["pm"]
+  : (((IN WHITE_SPACE THE) | AT) WHITE_SPACE)?
+    (
+      MORNING -> AM_PM["am"]
+      | (NOON | EVENING | NIGHT) -> AM_PM["pm"]
+    )
   ;
 
 named_time
