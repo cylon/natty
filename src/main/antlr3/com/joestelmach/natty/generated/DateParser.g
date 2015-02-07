@@ -435,38 +435,8 @@ explicit_relative_date
 
       ->   ^(RELATIVE_DATE explicit_relative_month_seek explicit_day_of_month_part)
 
-  // monday after next
-  | (explicit_day_of_week_part WHITE_SPACE AFTER WHITE_SPACE NEXT)
-      -> ^(RELATIVE_DATE
-          ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
-          explicit_day_of_week_part)
-
-  // saturday before last
-  | (explicit_day_of_week_part WHITE_SPACE BEFORE WHITE_SPACE LAST)
-      -> ^(RELATIVE_DATE
-          ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
-          explicit_day_of_week_part)
-
-  // monday of last week, tuesday of next week
-  | (explicit_day_of_week_part WHITE_SPACE prefix WHITE_SPACE WEEK)=>
-      explicit_day_of_week_part WHITE_SPACE prefix WHITE_SPACE WEEK
-      -> ^(RELATIVE_DATE 
-          ^(SEEK prefix SPAN["week"])
-          explicit_day_of_week_part)
-          
-  // monday of 2 weeks ago, tuesday of 3 weeks from now
-  | (explicit_day_of_week_part WHITE_SPACE spelled_or_int_optional_prefix)=>
-    explicit_day_of_week_part WHITE_SPACE spelled_or_int_optional_prefix 
-        WHITE_SPACE WEEK WHITE_SPACE relative_date_suffix
-      -> ^(RELATIVE_DATE 
-          ^(SEEK relative_date_suffix spelled_or_int_optional_prefix SPAN["week"])
-          explicit_day_of_week_part)
-          
-  // monday of the week after next
-  | explicit_day_of_week_part WHITE_SPACE THE WHITE_SPACE WEEK WHITE_SPACE AFTER WHITE_SPACE NEXT
-      -> ^(RELATIVE_DATE 
-          ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
-          explicit_day_of_week_part)
+  | explicit_day_of_week_part WHITE_SPACE explicit_relative_week_seek
+      -> ^(RELATIVE_DATE explicit_relative_week_seek explicit_day_of_week_part)
   ;
 
 explicit_relative_month_seek
@@ -485,6 +455,28 @@ explicit_relative_month_seek
   // september
   | relaxed_month
       -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] relaxed_month)
+  ;
+
+explicit_relative_week_seek
+  // after next
+  : AFTER WHITE_SPACE NEXT
+      -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
+
+  // before last
+  | BEFORE WHITE_SPACE LAST
+      -> ^(SEEK DIRECTION["<"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
+
+  // last week, tuesday of next week
+  | prefix WHITE_SPACE WEEK
+      -> ^(SEEK prefix SPAN["week"])
+
+  // 2 weeks ago, tuesday of 3 weeks from now
+  | spelled_or_int_optional_prefix WHITE_SPACE WEEK WHITE_SPACE relative_date_suffix
+      -> ^(SEEK relative_date_suffix spelled_or_int_optional_prefix SPAN["week"])
+
+  // the week after next
+  | THE WHITE_SPACE WEEK WHITE_SPACE AFTER WHITE_SPACE NEXT
+      -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
   ;
 
 explicit_day_of_month_part
