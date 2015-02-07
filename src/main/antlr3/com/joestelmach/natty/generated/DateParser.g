@@ -178,27 +178,26 @@ alternative_day_of_month_list
   // mon may 15 or tues may 16
   : ((relaxed_day_of_week? relaxed_month WHITE_SPACE relaxed_day_of_month (conjunction relaxed_day_of_month)+) (date_time_separator explicit_time)?)
       -> ^(DATE_TIME ^(EXPLICIT_DATE relaxed_month relaxed_day_of_month) explicit_time?)+
-      
-  // first or last day of september
-  | (explicit_day_of_month_part conjunction explicit_day_of_month_part WHITE_SPACE relaxed_month)=>
-      first=explicit_day_of_month_part conjunction second=explicit_day_of_month_part WHITE_SPACE relaxed_month (date_time_separator explicit_time)?
-        -> ^(DATE_TIME ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_month) $first) explicit_time?)
-           ^(DATE_TIME ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_month) $second) explicit_time?)
-           
-  // first or last day of next september
-  | (explicit_day_of_month_part conjunction explicit_day_of_month_part WHITE_SPACE prefix WHITE_SPACE explicit_relative_month)=>
-      first=explicit_day_of_month_part conjunction second=explicit_day_of_month_part WHITE_SPACE prefix WHITE_SPACE explicit_relative_month (date_time_separator explicit_time)?
-        -> ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK prefix explicit_relative_month) $first) explicit_time?)
-           ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK prefix explicit_relative_month) $second) explicit_time?)
-           
-  // first or last day of 2 septembers from now
-  | (explicit_day_of_month_part conjunction explicit_day_of_month_part WHITE_SPACE spelled_or_int_optional_prefix WHITE_SPACE explicit_relative_month WHITE_SPACE relative_date_suffix)=>
-      first=explicit_day_of_month_part conjunction second=explicit_day_of_month_part WHITE_SPACE 
-        spelled_or_int_optional_prefix WHITE_SPACE explicit_relative_month WHITE_SPACE relative_date_suffix (date_time_separator explicit_time)?
-          -> ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK relative_date_suffix spelled_or_int_optional_prefix explicit_relative_month) $first) explicit_time?)
-             ^(DATE_TIME ^(RELATIVE_DATE ^(SEEK relative_date_suffix spelled_or_int_optional_prefix explicit_relative_month) $second) explicit_time?)
+
+  | first=explicit_day_of_month_part conjunction second=explicit_day_of_month_part WHITE_SPACE alternative_day_seek (date_time_separator explicit_time)?
+    -> ^(DATE_TIME ^(RELATIVE_DATE alternative_day_seek $first) explicit_time?)
+       ^(DATE_TIME ^(RELATIVE_DATE alternative_day_seek $second) explicit_time?)
   ;
-  
+
+alternative_day_seek
+  //  next september
+  : prefix WHITE_SPACE explicit_relative_month
+    -> ^(SEEK prefix explicit_relative_month)
+
+  //  2 septembers from now
+  | spelled_or_int_optional_prefix WHITE_SPACE explicit_relative_month WHITE_SPACE relative_date_suffix
+    -> ^(SEEK relative_date_suffix spelled_or_int_optional_prefix explicit_relative_month)
+
+  //  september
+  | relaxed_month
+    -> ^(EXPLICIT_SEEK relaxed_month)
+  ;
+
 alternative_day_of_week_list
   : first_direction=alternative_direction WHITE_SPACE day_of_week
 
