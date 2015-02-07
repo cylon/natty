@@ -425,25 +425,15 @@ relative_date
 // these represent explicit points within a relative range
 
 explicit_relative_date
-  // 1st of three months ago, 10th of 3 octobers from now, the last monday in 2 novembers ago
-  : (explicit_day_of_month_part WHITE_SPACE spelled_or_int_optional_prefix)=>
-    explicit_day_of_month_part WHITE_SPACE spelled_or_int_optional_prefix 
-        WHITE_SPACE explicit_relative_month WHITE_SPACE relative_date_suffix
-      -> ^(RELATIVE_DATE ^(SEEK relative_date_suffix spelled_or_int_optional_prefix explicit_relative_month) explicit_day_of_month_part)
-          
-  // 10th of next month, 31st of last month, 10th of next october, 30th of this month, the last thursday of last november
-  | (explicit_day_of_month_part WHITE_SPACE prefix)=>
-    explicit_day_of_month_part WHITE_SPACE prefix WHITE_SPACE explicit_relative_month
-      -> ^(RELATIVE_DATE 
-          ^(SEEK prefix explicit_relative_month)
-          explicit_day_of_month_part)
-          
-  // 10th of the month after next
-  | (explicit_day_of_month_part WHITE_SPACE THE WHITE_SPACE MONTH WHITE_SPACE AFTER WHITE_SPACE NEXT)=>
-    explicit_day_of_month_part WHITE_SPACE THE WHITE_SPACE MONTH WHITE_SPACE AFTER WHITE_SPACE NEXT
-      -> ^(RELATIVE_DATE 
-          ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["month"])
-          explicit_day_of_month_part)
+  // the first day of 2009
+  : explicit_day_of_year_part WHITE_SPACE relaxed_year
+      -> ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_year) explicit_day_of_year_part)
+
+  | explicit_day_of_month_part WHITE_SPACE explicit_relative_month_seek (relaxed_year_prefix relaxed_year)?
+      -> {$relaxed_year.text != null}?
+           ^(RELATIVE_DATE explicit_relative_month_seek explicit_day_of_month_part ^(EXPLICIT_SEEK relaxed_year))
+
+      ->   ^(RELATIVE_DATE explicit_relative_month_seek explicit_day_of_month_part)
 
   // monday after next
   | (explicit_day_of_week_part WHITE_SPACE AFTER WHITE_SPACE NEXT)
@@ -477,26 +467,26 @@ explicit_relative_date
       -> ^(RELATIVE_DATE 
           ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["week"])
           explicit_day_of_week_part)
-          
-  // the last thursday in november 1999
-  | (explicit_day_of_month_part WHITE_SPACE relaxed_month relaxed_year_prefix relaxed_year)=>
-      explicit_day_of_month_part WHITE_SPACE relaxed_month relaxed_year_prefix relaxed_year
-      -> ^(RELATIVE_DATE 
-          ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] relaxed_month)
-          explicit_day_of_month_part
-          ^(EXPLICIT_SEEK relaxed_year))
-          
-  // above without the year restriction
-  | explicit_day_of_month_part WHITE_SPACE relaxed_month
-      -> ^(RELATIVE_DATE 
-          ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] relaxed_month)
-          explicit_day_of_month_part)
-
-  // the first day of 2009
-  | explicit_day_of_year_part WHITE_SPACE relaxed_year
-      -> ^(RELATIVE_DATE ^(EXPLICIT_SEEK relaxed_year) explicit_day_of_year_part)
   ;
-  
+
+explicit_relative_month_seek
+  // 1st of three months ago, 10th of 3 octobers from now, the last monday in 2 novembers ago
+  : spelled_or_int_optional_prefix WHITE_SPACE explicit_relative_month WHITE_SPACE relative_date_suffix
+      -> ^(SEEK relative_date_suffix spelled_or_int_optional_prefix explicit_relative_month)
+
+  // 10th of next month, 31st of last month, 10th of next october, 30th of this month, the last thursday of last november
+  | prefix WHITE_SPACE explicit_relative_month
+      -> ^(SEEK prefix explicit_relative_month)
+
+  // 10th of the month after next
+  | THE WHITE_SPACE MONTH WHITE_SPACE AFTER WHITE_SPACE NEXT
+      -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["2"] SPAN["month"])
+
+  // september
+  | relaxed_month
+      -> ^(SEEK DIRECTION[">"] SEEK_BY["by_day"] INT["0"] relaxed_month)
+  ;
+
 explicit_day_of_month_part
   // first of, 10th of, 31st of,
   : (THE WHITE_SPACE)? relaxed_day_of_month day_of_month_suffix?
