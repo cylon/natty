@@ -331,6 +331,7 @@ relaxed_year_prefix
 // ********** formal date rules **********
 
 formal_date
+  // march 2009
   : (relaxed_month WHITE_SPACE relaxed_year)=>
     relaxed_month WHITE_SPACE relaxed_year
       -> ^(EXPLICIT_DATE relaxed_month ^(DAY_OF_MONTH INT["1"]) relaxed_year?)
@@ -854,7 +855,7 @@ friendly_meridian_indicator
   ;
 
 named_time
-  : named_time_prefix named_hour ((WHITE_SPACE AT)? WHITE_SPACE hm=explicit_time_hours_minutes)?
+  : named_time_prefix? named_hour ((WHITE_SPACE AT)? WHITE_SPACE hm=explicit_time_hours_minutes)?
 
     // If the named time is at night, but the hour given is before 5, we'll assume tomorrow morning
     -> {$hm.text != null && $named_hour.ampm != null && $named_hour.ampm.equals("pm") && Integer.parseInt($hm.hours) < 5}?
@@ -871,7 +872,7 @@ named_time
   ;
 
 named_time_prefix
-  : (((IN WHITE_SPACE THE) | AT | THIS) WHITE_SPACE)?
+  : ((IN WHITE_SPACE THE) | AT | THIS) WHITE_SPACE
   ;
 
 named_hour returns [String ampm]
