@@ -48,7 +48,7 @@ tokens {
   public void displayRecognitionError(String[] tokenNames, RecognitionException re) {
     String message = getErrorHeader(re);
     try { message += getErrorMessage(re, tokenNames); } catch(Exception e) {}
-    _logger.warn(message);
+    _logger.debug(message);
   }
 }
 

@@ -55,7 +55,7 @@ public class HolidayGrammarTest extends AbstractGrammarTest {
     assertAST("kwanzaa day", "KWANZAA");
     
     assertAST("labor day", "LABOR_DAY");
-    
+
     assertAST("martin luther king day", "MLK_DAY");
     assertAST("martin luther king jr.'s day", "MLK_DAY");
     assertAST("martin luther king jr. day", "MLK_DAY");

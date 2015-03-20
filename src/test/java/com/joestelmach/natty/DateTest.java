@@ -366,7 +366,14 @@ public class DateTest extends AbstractTest {
 
   public static void main(String[] args) {
 
-    String value = "martin luther king, jr. day";
+    //String value = "**SHOT 01/31/15**";
+    //String value = "I want to see my mother on sunday.";
+    String value="I want to lose five pounds in the next two months.";
+    //value="golf with friends tomorrow at 10 ";
+    //value="save $1000 by September";
+    value="i want to have 1 kid this year";
+    value="Fried Chicken, Wedding Dinner";
+
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
 
     Parser parser = new Parser();
