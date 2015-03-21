@@ -66,9 +66,11 @@ public class Parser {
     
     // and parse each of them
     List<DateGroup> groups = new ArrayList<DateGroup>();
+    TokenStream lastStream = null;
     for(TokenStream stream:streams) {
-      List<Token> tokens = ((NattyTokenSource) stream.getTokenSource()).getTokens();
-      DateGroup group = singleParse(stream);
+      lastStream = stream;
+      List<Token> tokens = ((NattyTokenSource) lastStream.getTokenSource()).getTokens();
+      DateGroup group = singleParse(lastStream);
       while((group == null || group.getDates().size() == 0) && tokens.size() > 0) {
         if(group == null || group.getDates().size() == 0) {
           
@@ -79,15 +81,15 @@ public class Parser {
         
           // otherwise, we have two options:
           else {
-            
+
             // 1. Continuously remove tokens from the end of the stream and re-parse.  This will
             //    recover from the case of an extraneous token at the end of the token stream.
             //    For example: 'june 20th on'
             List<Token> endRemovedTokens = new ArrayList<Token>(tokens);
             while((group == null || group.getDates().isEmpty()) && endRemovedTokens.size() > 2) {
               endRemovedTokens = endRemovedTokens.subList(0, endRemovedTokens.size() - 1);
-              TokenStream newStream = new CommonTokenStream(new NattyTokenSource(endRemovedTokens));
-              group = singleParse(newStream);
+              lastStream = new CommonTokenStream(new NattyTokenSource(endRemovedTokens));
+              group = singleParse(lastStream);
             }
             
             // 2. Continuously look for another possible starting point in the token 
@@ -104,18 +106,38 @@ public class Parser {
                   break;
                 }
               }
-              TokenStream newStream = new CommonTokenStream(new NattyTokenSource(tokens));
-              group = singleParse(newStream);
+              lastStream = new CommonTokenStream(new NattyTokenSource(tokens));
+              group = singleParse(lastStream);
             }
           }
         }
       }
-      // if a group with some date(s) was found, we add it
-      if(group != null && group.getDates().size() > 0) {
+
+      // if a group with at least one date was found, we'll add it to our list, but not if
+      // multiple streams were found and the group contains only numeric time information
+      if(group != null && !group.getDates().isEmpty() &&
+          (streams.size() == 1 || !group.isDateInferred() || !isAllNumeric(lastStream))) {
         groups.add(group);
       }
     }
     return groups;
+  }
+
+  /**
+   * Determines if a token stream contains only numeric tokens
+   * @param stream
+   * @return true if all tokens in the given stream can be parsed as an integer
+   */
+  private boolean isAllNumeric(TokenStream stream) {
+    List<Token> tokens = ((NattyTokenSource) stream.getTokenSource()).getTokens();
+    for(Token token:tokens) {
+      try {
+        Integer.parseInt(token.getText());
+      } catch(NumberFormatException e) {
+        return false;
+      }
+    }
+    return true;
   }
   
   /**
@@ -201,15 +223,14 @@ public class Parser {
 
       // we're currently NOT collecting for a possible date group
       if(currentGroup == null) {
-        // skip over white space and tokens not immediately followed by white space
+        // skip over white space and tokens not immediately followed by white space or
+        // known tokens that cannot be the start of a date
         if(currentToken.getType() != DateLexer.WHITE_SPACE &&
-            (previousToken == null || previousToken.getType() == DateLexer.WHITE_SPACE)) {
+            (previousToken == null || previousToken.getType() != DateLexer.UNKNOWN) &&
+            DateParser.FOLLOW_empty_in_parse186.member(currentToken.getType())) {
 
-          // if the token is a possible date start token, we start a new collection
-          if(DateParser.FOLLOW_empty_in_parse186.member(currentToken.getType())) {
-            currentGroup = new ArrayList<Token>();
-            currentGroup.add(currentToken);
-          }
+          currentGroup = new ArrayList<Token>();
+          currentGroup.add(currentToken);
         }
       }
 

@@ -161,20 +161,14 @@ public class SearchTest extends AbstractTest {
     validateDate(dates.get(0), 2, 27, 2011); 
     
     groups = parser.parse("I want to be able to jog 3 miles non-stop by September.");
-    Assert.assertEquals(2, groups.size());
+    Assert.assertEquals(1, groups.size());
     dates = groups.get(0).getDates();
     Assert.assertEquals(1, dates.size());
-    validateDateTime(dates.get(0), 2, 20, 2011, 3, 0, 0); 
-    dates = groups.get(1).getDates();
-    Assert.assertEquals(1, dates.size());
-    validateDate(dates.get(0), 9, 1, 2011); 
+    validateDate(dates.get(0), 9, 1, 2011);
     
     groups = parser.parse("I want to lose 10 lbs in 10 days");
-    Assert.assertEquals(2, groups.size());
+    Assert.assertEquals(1, groups.size());
     dates = groups.get(0).getDates();
-    Assert.assertEquals(1, dates.size());
-    validateDateTime(dates.get(0), 2, 20, 2011, 10, 0, 0); 
-    dates = groups.get(1).getDates();
     Assert.assertEquals(1, dates.size());
     validateDate(dates.get(0), 3, 2, 2011); 
     
@@ -185,26 +179,20 @@ public class SearchTest extends AbstractTest {
     validateDate(dates.get(0), 12, 30, 2011); 
     
     groups = parser.parse("i want to have 1 kid this year");
-    Assert.assertEquals(2, groups.size());
+    Assert.assertEquals(1, groups.size());
     dates = groups.get(0).getDates();
     Assert.assertEquals(1, dates.size());
-    validateDateTime(dates.get(0), 2, 20, 2011, 1, 0, 0); 
-    dates = groups.get(1).getDates();
-    Assert.assertEquals(1, dates.size());
     validateDate(dates.get(0), 2, 20, 2011); 
-    
+
     groups = parser.parse("save $1000 by September");
     Assert.assertEquals(1, groups.size());
     dates = groups.get(0).getDates();
     Assert.assertEquals(1, dates.size());
-    validateDate(dates.get(0), 9, 1, 2011); 
-    
+    validateDate(dates.get(0), 9, 1, 2011);
+
     groups = parser.parse("have my son play at muse music in provo UT at the 3 band cause they always have fog on the third band at 7:30");
-    Assert.assertEquals(2, groups.size());
+    Assert.assertEquals(1, groups.size());
     dates = groups.get(0).getDates();
-    Assert.assertEquals(1, dates.size());
-    validateDateTime(dates.get(0), 2, 20, 2011, 3, 0, 0); 
-    dates = groups.get(1).getDates();
     Assert.assertEquals(1, dates.size());
     validateDateTime(dates.get(0), 2, 20, 2011, 7, 30, 0); 
     

@@ -17,6 +17,7 @@ public class DateGroup {
   private int _line;
   private int _position;
   private boolean _isRecurring;
+  private boolean _isDateInferred;
   private boolean _isTimeInferred;
   private Date _recurringUntil;
   private Map<String, List<ParseLocation>> _parseLocations;
@@ -24,7 +25,16 @@ public class DateGroup {
 
   public DateGroup() {
     _dates = new ArrayList<Date>();
+    _isDateInferred = true;
     _isTimeInferred = true;
+  }
+
+  public boolean isDateInferred() {
+    return _isDateInferred;
+  }
+
+  public void setDateInferred(boolean isDateInferred) {
+    this._isDateInferred = isDateInferred;
   }
 
   public List<Date> getDates() {

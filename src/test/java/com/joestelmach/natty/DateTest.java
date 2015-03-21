@@ -369,10 +369,9 @@ public class DateTest extends AbstractTest {
     //String value = "**SHOT 01/31/15**";
     //String value = "I want to see my mother on sunday.";
     String value="I want to lose five pounds in the next two months.";
-    //value="golf with friends tomorrow at 10 ";
-    //value="save $1000 by September";
-    value="i want to have 1 kid this year";
-    value="Fried Chicken, Wedding Dinner";
+    value = "save $1000 by September";
+    value = "I know we should meet tomorrow";
+    value = "hillary clinton sep 13, 2013";
 
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
 
