@@ -50,11 +50,11 @@ public class Parser {
    * @return
    */
   public List<DateGroup> parse(String value) {
-    
+
     // lex the input value to obtain our global token stream
     ANTLRInputStream input = null;
     try {
-      input = new ANTLRNoCaseInputStream(new ByteArrayInputStream(value.trim().getBytes()));
+      input = new ANTLRNoCaseInputStream(new ByteArrayInputStream(value.getBytes()));
       
     } catch (IOException e) {
       _logger.error("could not lex input", e);
@@ -70,26 +70,25 @@ public class Parser {
     for(TokenStream stream:streams) {
       lastStream = stream;
       List<Token> tokens = ((NattyTokenSource) lastStream.getTokenSource()).getTokens();
-      DateGroup group = singleParse(lastStream);
+      DateGroup group = singleParse(lastStream, value);
       while((group == null || group.getDates().size() == 0) && tokens.size() > 0) {
         if(group == null || group.getDates().size() == 0) {
           
           // if we're down to only two tokens in our token stream, we can't continue
-          if(tokens.size() <= 2) {
+          if(tokens.size() <= 1) {
             tokens.clear();
           }
         
           // otherwise, we have two options:
           else {
-
             // 1. Continuously remove tokens from the end of the stream and re-parse.  This will
             //    recover from the case of an extraneous token at the end of the token stream.
             //    For example: 'june 20th on'
             List<Token> endRemovedTokens = new ArrayList<Token>(tokens);
-            while((group == null || group.getDates().isEmpty()) && endRemovedTokens.size() > 2) {
+            while((group == null || group.getDates().isEmpty()) && endRemovedTokens.size() > 1) {
               endRemovedTokens = endRemovedTokens.subList(0, endRemovedTokens.size() - 1);
               lastStream = new CommonTokenStream(new NattyTokenSource(endRemovedTokens));
-              group = singleParse(lastStream);
+              group = singleParse(lastStream, value);
             }
             
             // 2. Continuously look for another possible starting point in the token 
@@ -107,17 +106,31 @@ public class Parser {
                 }
               }
               lastStream = new CommonTokenStream(new NattyTokenSource(tokens));
-              group = singleParse(lastStream);
+              group = singleParse(lastStream, value);
             }
           }
         }
       }
 
-      // if a group with at least one date was found, we'll add it to our list, but not if
-      // multiple streams were found and the group contains only numeric time information
+      // If a group with at least one date was found, we'll most likely want to add it to our list,
+      // but not if multiple streams were found and the group contains only numeric time information.
+      // For example: A full text string of '1' should parse to 1 o'clock, but 'I need 1 hard drive'
+      // should result in no groups found.
       if(group != null && !group.getDates().isEmpty() &&
           (streams.size() == 1 || !group.isDateInferred() || !isAllNumeric(lastStream))) {
-        groups.add(group);
+
+        // Additionally, we'll only accept this group if the associated text does not have an
+        // alphabetic character to the immediate left or right, which would indicate a portion
+        // of a word was tokenized. For example, 'nightingale' will result in a 'NIGHT' token,
+        // but there's clearly no datetime information there.
+        group.setFullText(value);
+        String prefix = group.getPrefix(1);
+        String suffix = group.getSuffix(1);
+        if((prefix.isEmpty() || !Character.isLetter(prefix.charAt(0))) &&
+           (suffix.isEmpty() || !Character.isLetter(suffix.charAt(0)))) {
+
+          groups.add(group);
+        }
       }
     }
     return groups;
@@ -148,7 +161,7 @@ public class Parser {
    * @param stream
    * @return
    */
-  private DateGroup singleParse(TokenStream stream) {
+  private DateGroup singleParse(TokenStream stream, String fullText) {
 	DateGroup group = null;
 	List<Token> tokens = ((NattyTokenSource) stream.getTokenSource()).getTokens();
 	if(tokens.isEmpty()) return group;
@@ -192,12 +205,24 @@ public class Parser {
         group.setPosition(location.getStart());
         group.setSyntaxTree(tree);
         group.setParseLocations(listener.getLocations());
+        group.setFullText(fullText);
+
+        // if the group's matching text has an immediate alphabetic prefix or suffix,
+        // we ignore this result
+        String prefix = group.getPrefix(1);
+        String suffix = group.getSuffix(1);
+        if((!prefix.isEmpty() && Character.isLetter(prefix.charAt(0))) ||
+            (!suffix.isEmpty() && Character.isLetter(suffix.charAt(0)))) {
+
+          group = null;
+        }
+
       }
 
     } catch(RecognitionException e) {
       _logger.debug("Could not parse input", e);
     }
-    
+
     return group;
   }
   
@@ -216,7 +241,6 @@ public class Parser {
     List<Token> currentGroup = null;
     List<List<Token>> groups = new ArrayList<List<Token>>();
     Token currentToken;
-    Token previousToken = null;
     StringBuilder tokenString = new StringBuilder();
     while((currentToken = stream.getTokenSource().nextToken()).getType() != DateLexer.EOF) {
       tokenString.append(DateParser.tokenNames[currentToken.getType()]).append(" ");
@@ -226,7 +250,6 @@ public class Parser {
         // skip over white space and tokens not immediately followed by white space or
         // known tokens that cannot be the start of a date
         if(currentToken.getType() != DateLexer.WHITE_SPACE &&
-            (previousToken == null || previousToken.getType() != DateLexer.UNKNOWN) &&
             DateParser.FOLLOW_empty_in_parse186.member(currentToken.getType())) {
 
           currentGroup = new ArrayList<Token>();
@@ -242,36 +265,20 @@ public class Parser {
         }
 
         else {
-          // if this is an unknown token, we need to end the current group
+          // if this is an unknown token, we'll close out the current group
           if(currentToken.getType() == DateLexer.UNKNOWN) {
-
-            // since we've encountered an UNKNOWN token, we want to exclude any previous tokens
-            // up to the last white space
-            int endIndex = -1;
-            for(int i=currentGroup.size()-1; i>=0; i--) {
-              Token token = currentGroup.get(i);
-              if(token.getType() == DateLexer.WHITE_SPACE) {
-                endIndex = i -1;
-                break;
-              }
-            }
-
-            currentGroup = currentGroup.subList(0, endIndex + 1);
-
-            if(currentGroup.size() > 0) {
+            if(!currentGroup.isEmpty()) {
               groups.add(currentGroup);
             }
             currentGroup = null;
           }
           // otherwise, the token is known and we're currently collecting for
-          // a group, we add it if it's not a dot
+          // a group, so we'll add it if it's not a dot
           else if(currentToken.getType() != DateLexer.DOT) {
             currentGroup.add(currentToken);
           }
         }
       }
-
-      previousToken = currentToken;
     }
 
     if(currentGroup != null) {

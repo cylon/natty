@@ -14,6 +14,7 @@ import java.util.Map;
 public class DateGroup {
   private List<Date> _dates;
   private String _text;
+  private String _fullText;
   private int _line;
   private int _position;
   private boolean _isRecurring;
@@ -27,6 +28,14 @@ public class DateGroup {
     _dates = new ArrayList<Date>();
     _isDateInferred = true;
     _isTimeInferred = true;
+  }
+
+  public String getFullText() {
+    return _fullText;
+  }
+
+  public void setFullText(String fullText) {
+    this._fullText = fullText;
   }
 
   public boolean isDateInferred() {
@@ -104,4 +113,37 @@ public class DateGroup {
   public void setSyntaxTree(Tree syntaxTree) {
     _syntaxTree = syntaxTree;
   }
+
+  public String getPrefix(int length) {
+    return _fullText.substring(Math.max(0, getAbsolutePosition() - length), getAbsolutePosition());
+  }
+
+  public String getSuffix(int length) {
+    int endPosition = getAbsolutePosition() + _text.length() + 1;
+    return _fullText.substring(
+        Math.min(endPosition - 1, _fullText.length()),
+        Math.min(endPosition + length - 1, _fullText.length()));
+  }
+
+  public int getAbsolutePosition() {
+    int lineCount = 1;
+    int columnCount = 1;
+    for(int i=0; i<_fullText.length(); i++) {
+
+      // return current position if we've arrived at the requested character
+      if(lineCount == _line && columnCount == _position) {
+        return i;
+      }
+
+      if(_fullText.charAt(i) == '\n') {
+        lineCount++;
+        columnCount = 1;
+      }
+      else {
+        columnCount++;
+      }
+    }
+    return -1;
+  }
+
 }
