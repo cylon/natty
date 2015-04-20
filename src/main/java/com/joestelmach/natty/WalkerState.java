@@ -25,8 +25,8 @@ public class WalkerState {
   private static final String PLUS = "+";
   private static final String MINUS = "-";
   private static final String GMT = "GMT";
-  private static final String HOLIDAY_ICS_FILE = "/holidays.ics";
-  private static final String SEASON_ICS_FILE = "/seasons.ics";
+  private static final String HOLIDAY_ICS_FILE = "/natty/holidays.ics";
+  private static final String SEASON_ICS_FILE = "/natty/seasons.ics";
 
   private GregorianCalendar _calendar;
   private TimeZone _defaultTimeZone;
